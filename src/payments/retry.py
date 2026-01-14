@@ -20,6 +20,7 @@ class RetryPolicy:
     retry_on: tuple[type[Exception], ...] = (TemporaryGatewayError,)
 
     def run(self, fn: Callable[[], T], sleep: Callable[[float], None] = _sleep) -> T:
+        """Execute with retries; inject sleep to keep tests fast and deterministic."""
         attempt = 0
         delay = self.base_delay_s
 
