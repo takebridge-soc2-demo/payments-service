@@ -1,0 +1,8 @@
+# Payments domain owners
+/src/payments/ @takebridge-soc2-demo/payments
+
+# CI & automation owned by security (so changes to workflows require security eyes)
+/.github/ @takebridge-soc2-demo/security
+
+# Ownership of this file itself
+/CODEOWNERS @takebridge-soc2-demo/security
