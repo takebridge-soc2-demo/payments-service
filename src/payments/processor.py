@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from .idempotency import InMemoryIdempotencyStore
 from .retry import RetryPolicy, TemporaryGatewayError
 
 
@@ -11,6 +12,7 @@ class ChargeRequest:
     amount_cents: int
     currency: str
     customer_id: str
+    idempotency_key: str
 
 
 class PaymentGateway(Protocol):
@@ -19,7 +21,6 @@ class PaymentGateway(Protocol):
 
 
 class FakeGateway:
-    """Demo gateway with deterministic charge ids."""
     def __init__(self) -> None:
         self._counter = 1000
 
@@ -29,7 +30,6 @@ class FakeGateway:
 
 
 class FlakyGateway:
-    """Fails N times then succeeds; useful for tests."""
     def __init__(self, fail_times: int) -> None:
         self._remaining = fail_times
         self._counter = 2000
@@ -43,9 +43,21 @@ class FlakyGateway:
 
 
 class PaymentProcessor:
-    def __init__(self, gateway: PaymentGateway, retry: RetryPolicy | None = None) -> None:
+    def __init__(
+        self,
+        gateway: PaymentGateway,
+        retry: RetryPolicy | None = None,
+        idempotency: InMemoryIdempotencyStore | None = None,
+    ) -> None:
         self._gateway = gateway
         self._retry = retry or RetryPolicy()
+        self._idem = idempotency or InMemoryIdempotencyStore()
 
     def charge(self, req: ChargeRequest) -> str:
-        return self._retry.run(lambda: self._gateway.charge(req))
+        existing = self._idem.get(req.idempotency_key)
+        if existing:
+            return existing
+
+        charge_id = self._retry.run(lambda: self._gateway.charge(req))
+        self._idem.put(req.idempotency_key, charge_id)
+        return charge_id
