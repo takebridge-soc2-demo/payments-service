@@ -54,10 +54,12 @@ class PaymentProcessor:
         self._idem = idempotency or InMemoryIdempotencyStore()
 
     def charge(self, req: ChargeRequest) -> str:
-        existing = self._idem.get(req.idempotency_key)
-        if existing:
-            return existing
+        lock = self._idem.lock_for(req.idempotency_key)
+        with lock:
+            existing = self._idem.get(req.idempotency_key)
+            if existing:
+                return existing
 
-        charge_id = self._retry.run(lambda: self._gateway.charge(req))
-        self._idem.put(req.idempotency_key, charge_id)
-        return charge_id
+            charge_id = self._retry.run(lambda: self._gateway.charge(req))
+            self._idem.put(req.idempotency_key, charge_id)
+            return charge_id
