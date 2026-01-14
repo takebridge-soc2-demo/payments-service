@@ -9,7 +9,10 @@ T = TypeVar("T")
 
 
 class TemporaryGatewayError(Exception):
-    """Transient upstream payment gateway failure (retryable). Backoff is applied between attempts."""
+    """Transient upstream payment gateway failure (retryable).
+
+    Backoff is applied between attempts.
+    """
 
 
 @dataclass(frozen=True)
